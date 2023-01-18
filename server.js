@@ -10,13 +10,25 @@ initializePassport(passport);
 const port = process.env.PORT || 4000;
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: false })); //allows us to send data from frontend to our server
+const checkAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return res.redirect("/users/dashboard");
+  }
+  next();
+};
+const checkNotAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated) {
+    return next();
+  }
+  res.redirect("/users/login");
+};
 app.use(
   session({
     // Key we want to keep secret which will encrypt all of our information
     secret: process.env.SESSION_SECRET,
     // Should we resave our session variables if nothing has changes which we dont
     resave: false,
-    // Save empty value if there is no vaue which we do not want to do
+    // Save empty value if there is no value which we do not want to do
     saveUninitialized: false,
   })
 );
@@ -33,9 +45,9 @@ app.get("/users/login", checkAuthenticated, (req, res) => {
   res.render("login");
 });
 app.get("/users/dashboard", checkNotAuthenticated, (req, res) => {
+  console.log(req.isAuthenticated());
   res.render("dashboard", { user: req.user.name });
 });
-
 app.get("/users/logout", (req, res, next) => {
   req.logout((err) => {
     if (err) {
@@ -109,18 +121,7 @@ app.post(
     failureFlash: true,
   })
 );
-const checkAuthenticated = (req, res, next) => {
-  if (req.isAuthenticated()) {
-    return res.redirect("/users/dashboard");
-  }
-  next();
-};
-const checkNotAuthenticated = (req, res, next) => {
-  if (req.isAuthenticated) {
-    return next();
-  }
-  res.redirect("/users/login");
-};
+
 app.listen(port, () => {
   console.log(`server running on port ${port}`);
 });
