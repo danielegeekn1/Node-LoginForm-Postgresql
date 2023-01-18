@@ -9,9 +9,12 @@ app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: false })); //allows us to send data from frontend to our server
 app.use(
   session({
-    secret: "secret",
+    // Key we want to keep secret which will encrypt all of our information
+    secret: process.env.SESSION_SECRET,
+    // Should we resave our session variables if nothing has changes which we dont
     resave: false,
-    saveUnitialized: false,
+    // Save empty value if there is no vaue which we do not want to do
+    saveUninitialized: false,
   })
 );
 app.use(flash());
@@ -61,6 +64,22 @@ app.post("/users/register", async (req, res) => {
         if (results.rows.lenght > 0) {
           errors.push({ message: "User already registered" });
           res.render("register", { errors });
+        } else {
+          pool.query(
+            `INSERT INTO users (name, email, password)
+            VALUES($1, $2, $3)
+            RETURNING id, password
+            `,
+            [name, email, hashPsw],
+            (err, results) => {
+              if (err) {
+                throw err;
+              }
+              console.log(results.rows);
+              req.flash("success_msg", "You are now registered, please login");
+              res.redirect("/users/login");
+            }
+          );
         }
       }
     );
