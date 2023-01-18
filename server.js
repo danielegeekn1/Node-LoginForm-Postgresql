@@ -1,9 +1,20 @@
 const express = require("express");
 const app = express();
 const { pool } = require("./dbConfig");
+const bcrypt = require("bcrypt");
+const session = require("express-session");
+const flash = require("express-flash");
 const port = process.env.PORT || 4000;
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: false })); //allows us to send data from frontend to our server
+app.use(
+  session({
+    secret: "secret",
+    resave: false,
+    saveUnitialized: false,
+  })
+);
+app.use(flash());
 app.get("/", (req, res) => {
   res.render("index");
 });
@@ -16,7 +27,7 @@ app.get("/users/login", (req, res) => {
 app.get("/users/dashboard", (req, res) => {
   res.render("dashboard", { user: "Conor" });
 });
-app.post("/users/register", (req, res) => {
+app.post("/users/register", async (req, res) => {
   let { email, name, password, password2 } = req.body;
   console.log({ email, name, password, password2 });
   let errors = [];
@@ -34,6 +45,25 @@ app.post("/users/register", (req, res) => {
   }
   if (errors.lenght > 0) {
     res.render("register", { errors });
+  } else {
+    //If form validation has passed
+    let hashPsw = await bcrypt.hash(password, 10);
+    console.log(hashPsw);
+    pool.query(
+      `SELECT * FROM users 
+      WHERE email =$1 `,
+      [email],
+      (err, results) => {
+        if (err) {
+          throw err;
+        }
+        console.log(results.rows);
+        if (results.rows.lenght > 0) {
+          errors.push({ message: "User already registered" });
+          res.render("register", { errors });
+        }
+      }
+    );
   }
 });
 app.listen(port, () => {
